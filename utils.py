@@ -71,12 +71,12 @@ def mix_audio_and_extract_fea(file1, file2, dis_dir, fea_dir,verbose=True):
   # 提取特征
   NFFT = 512
   overlap = 256
-  mix_mag_spec = _manual_magnitude_spectrum_sci_stft(mixedData, NFFT, overlap)
-  clean1_mag_spec = _manual_magnitude_spectrum_sci_stft(waveData1,NFFT,overlap)
-  clean2_mag_spec = _manual_magnitude_spectrum_sci_stft(waveData2,NFFT,overlap)
-  mix_log_pow_spec = np.log((1.0 / NFFT) * (mix_mag_spec ** 2))
-  clean1_log_pow_spec = np.log((1.0 / NFFT) * (clean1_mag_spec ** 2))
-  clean2_log_pow_spec = np.log((1.0 / NFFT) * (clean2_mag_spec ** 2))
+  _,_,mix_mag_spec = _manual_magnitude_spectrum_sci_stft(mixedData, NFFT, overlap)
+  _,_,clean1_mag_spec = _manual_magnitude_spectrum_sci_stft(waveData1,NFFT,overlap)
+  _,_,clean2_mag_spec = _manual_magnitude_spectrum_sci_stft(waveData2,NFFT,overlap)
+  mix_log_pow_spec = np.log10((1.0 / NFFT) * (mix_mag_spec ** 2))
+  clean1_log_pow_spec = np.log10((1.0 / NFFT) * (clean1_mag_spec ** 2))
+  clean2_log_pow_spec = np.log10((1.0 / NFFT) * (clean2_mag_spec ** 2))
   feature={
     "x":mix_log_pow_spec,
     "y":[clean1_log_pow_spec,clean2_log_pow_spec],
