@@ -3,8 +3,10 @@ import scipy
 import scipy.io
 import scipy.signal
 import wave
-import matplotlib.pyplot as plt
 from PIL import Image
+import time
+import matplotlib
+import matplotlib.pyplot as plt
 
 
 class Test(object):
@@ -134,6 +136,17 @@ class Test(object):
     # pow_frames = (1.0 / NFFT) * ((mag_frames) ** 2)
     return t, f, mag_frames.T
 
+  def plt_specgram_test(self, signal, NFFT=512, overlap=256):
+    spec, f, t, _ = plt.specgram(signal,
+                                 Fs=16000,  # signal的采样率
+                                 window=np.hamming(NFFT),
+                                 NFFT=NFFT,
+                                 mode="magnitude",
+                                 noverlap=overlap,
+                                 )
+    plt.close()
+    return t, f, spec.T
+
   def show_spectrum(self, mat, name, t, f):
     print(np.max(mat))
     print(np.shape(mat))
@@ -146,11 +159,13 @@ class Test(object):
     # plt.imshow(mat)
     # plt.tight_layout()
     # plt.show()
-    plt.pcolormesh(f, t, np.log10(mat))
+    plt.pcolormesh(f, t, np.log10(mat),)
     plt.title('STFT Magnitude')
     plt.xlabel('Frequency [Hz]')
     plt.ylabel('Time [sec]')
-    plt.show()
+    plt.savefig("test/fig_"+name+'.jpg')
+    # plt.show()
+    plt.close()
 
   def spectrum_test(self):
     f = wave.open("utterance_test/BAC009S0908W0121.wav", 'rb')
@@ -171,10 +186,19 @@ class Test(object):
         t,
         f,
     )
-    t, f, spec = self.manual_magnitude_spectrum_sci_stft_test(waveData, 512, 256)
+    t, f, spec = self.manual_magnitude_spectrum_sci_stft_test(
+        waveData, 512, 256)
     self.show_spectrum(
         spec,
         "manual_magnitude_spectrum_sci_stft",
+        t,
+        f,
+    )
+    t, f, spec = self.plt_specgram_test(
+        waveData, 512, 256)
+    self.show_spectrum(
+        spec,
+        "plt_specgram_test",
         t,
         f,
     )
