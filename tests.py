@@ -144,7 +144,9 @@ class Test(object):
                                  mode="magnitude",
                                  noverlap=overlap,
                                  )
-    plt.close()
+    # plt.cla() # 清除axes，即当前 figure 中的活动的axes，但其他axes保持不变。
+    # plt.clf() # 清除当前 figure 的所有axes，但是不关闭这个 window，所以能继续复用于其他的 plot。
+    plt.close() # 关闭 window，如果没有指定，则指当前 window。
     return t, f, spec.T
 
   def show_spectrum(self, mat, name, t, f):
