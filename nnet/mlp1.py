@@ -1,10 +1,10 @@
 import tensorflow as tf
 import numpy as np
-from print_ import print_
+from .print_ import print_
 from PIL import Image
 
 
-class NN(object):
+class MLP1(object):
   def __init__(
           self, sizes=None, learning_rate=None, batch_size=None, n_epoches=None):
     self._sizes = sizes
@@ -21,6 +21,13 @@ class NN(object):
         out_size = size
         self.w_list.append(session.run(tf.random_normal([in_size, out_size])))
         self.b_list.append(session.run(tf.random_normal([out_size])))
+
+  def load_from_dbn_to_normalNN(self, dbn):
+    assert len(self._sizes) == len(dbn._sizes)
+    for i in range(len(dbn._sizes)):
+      assert dbn._sizes[i] == self._sizes[i]
+    for i in range(len(dbn._sizes)-1):
+      self.w_list[i], _, self.b_list[i] = dbn._rbm_list[i].get_param()
 
   def load_from_dbn_to_reconstructNN(self, dbn):
     assert len(self._sizes) == len(dbn._sizes)*2-1
@@ -54,9 +61,11 @@ class NN(object):
       in_size = self._sizes[i]
       out_size = size
       w_list.append(tf.get_variable("nn_weight_"+str(i), [in_size, out_size],
+                                    dtype=tf.float64,
                                     # initializer=tf.random_normal_initializer()))
                                     initializer=tf.constant_initializer(self.w_list[i])))
       b_list.append(tf.get_variable("nn_bias_"+str(i), [out_size],
+                                    dtype=tf.float64,
                                     # initializer=tf.random_normal_initializer()))
                                     initializer=tf.constant_initializer(self.b_list[i])))
     return w_list, b_list
@@ -71,22 +80,22 @@ class NN(object):
       y_out = tf.nn.sigmoid(
           tf.add(tf.matmul(y_out, w_list[i]), b_list[i]))
     y_out = tf.add(
-        tf.matmul(y_out, w_list[len(self._sizes)-2]), b_list[len(self._sizes)-2])# TODO fix loss fun
+        tf.matmul(y_out, w_list[len(self._sizes)-2]), b_list[len(self._sizes)-2])  # TODO fix loss fun
     return y_out
 
-  def train(self, X, Y):
+  def train(self, X, Y, verbose=True):
     batch_size = self._batch_size
     n_epoches = self._n_epoches
     display_epoches = 1
-    x_input = tf.placeholder("float", [None, self._sizes[0]])
-    y_target = tf.placeholder("float", [None, self._sizes[-1]])
+    x_input = tf.placeholder("float64", [None, self._sizes[0]])
+    y_target = tf.placeholder("float64", [None, self._sizes[-1]])
     w_list, b_list = self._load_w_b_from_self()
-    y_output = self._MLP(x_input, w_list, b_list)
+    y_output = tf.nn.sigmoid(self._MLP(x_input, w_list, b_list))
     # TODO fix loss fun
-    loss_cross_entropy = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(
-        logits=y_output, labels=y_target))
-    # loss_cross_entropy = -tf.reduce_mean(y_target*y_output)
-    # loss_cross_entropy = -tf.reduce_mean(y_target*tf.log(y_output))
+    # loss_cross_entropy = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(
+    #     logits=y_output, labels=y_target))
+    loss_cross_entropy = tf.reduce_mean(
+        tf.square(tf.subtract(tf.multiply(y_output, x_input), y_target)))
     train_op = tf.train.GradientDescentOptimizer(
         learning_rate=self._learning_rate).minimize(loss_cross_entropy)
 
@@ -112,15 +121,32 @@ class NN(object):
           self._save_w_b_to_self(session_t, w_list, b_list)
 
           avg_lost += float(lost_t)/total_batch
-        if epoch % display_epoches == 0:
+        if (epoch % display_epoches == 0) and verbose:
           print_("NNET Training : Epoch"+' %04d' %
                  (epoch+1)+" Lost "+str(avg_lost))
-      print_("Optimizer Finished!")
+      if verbose:
+        print_("Optimizer Finished!")
+      return avg_lost
+
+  def test(self, X, Y):
+    x_in = tf.placeholder("float64", [None, self._sizes[0]])
+    y_in = tf.placeholder("float64", [None, self._sizes[-1]])
+    # TODO fix Loss function
+    __predict = tf.nn.sigmoid(self._MLP(x_in, self.w_list, self.b_list))
+    mean_error_square = tf.reduce_mean(
+        tf.square(tf.subtract(tf.multiply(__predict, x_in), y_in)))
+    init = tf.global_variables_initializer()
+    with tf.Session() as session_t:
+      session_t.run(init)
+      return str(session_t.run(mean_error_square,
+                               feed_dict={x_in: X,
+                                          y_in: Y}))
 
   def test_linear(self, X, Y):
-    x_in = tf.placeholder("float", [None, self._sizes[0]])
-    y_in = tf.placeholder("float", [None, self._sizes[-1]])
-    __predict = tf.nn.sigmoid(self._MLP(x_in, self.w_list, self.b_list)) # TODO fix Loss function
+    x_in = tf.placeholder("float64", [None, self._sizes[0]])
+    y_in = tf.placeholder("float64", [None, self._sizes[-1]])
+    # TODO fix Loss function
+    __predict = tf.nn.sigmoid(self._MLP(x_in, self.w_list, self.b_list))
     error_square = tf.square(tf.subtract(__predict, y_in))
     mean_error_square = tf.reduce_mean(tf.cast(error_square, tf.float32))
     init = tf.global_variables_initializer()
@@ -131,9 +157,10 @@ class NN(object):
                                                     y_in: Y})))
 
   def test_logical(self, X, Y):
-    x_in = tf.placeholder("float", [None, self._sizes[0]])
-    y_in = tf.placeholder("float", [None, self._sizes[-1]])
-    __predict = tf.nn.softmax(tf.nn.sigmoid(self._MLP(x_in, self.w_list, self.b_list))) # TODO fix loss fun
+    x_in = tf.placeholder("float64", [None, self._sizes[0]])
+    y_in = tf.placeholder("float64", [None, self._sizes[-1]])
+    __predict = tf.nn.softmax(tf.nn.sigmoid(
+        self._MLP(x_in, self.w_list, self.b_list)))  # TODO fix loss fun
     __correct = tf.equal(tf.argmax(__predict, 1), tf.argmax(y_in, 1))
     __accuracy_rate = tf.reduce_mean(tf.cast(__correct, tf.float32))
     init = tf.global_variables_initializer()
@@ -144,8 +171,9 @@ class NN(object):
                                                          y_in: Y})))
 
   def predict(self, X):
-    X_t = tf.placeholder("float", [None, self._sizes[0]])
-    __predict = tf.nn.sigmoid(self._MLP(X_t, self.w_list, self.b_list)) # TODO fix loss fun
+    X_t = tf.placeholder("float64", [None, self._sizes[0]])
+    __predict = tf.nn.sigmoid(
+        self._MLP(X_t, self.w_list, self.b_list))  # TODO fix loss fun
     init = tf.global_variables_initializer()
     with tf.Session() as session_t:
       session_t.run(init)

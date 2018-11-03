@@ -27,7 +27,7 @@ def _manual_magnitude_spectrum_sci_stft(signal, NFFT=512, overlap=256):
   return t, f, mag_frames.T
 
 
-def mix_audio_and_extract_fea(file1, file2, dis_dir, fea_dir,verbose=True):
+def _mix_audio_and_extract_feature(file1, file2, verbose=True):
   # 混合语音
   f1 = wave.open(file1, 'rb')
   f2 = wave.open(file2, 'rb')
@@ -56,34 +56,79 @@ def mix_audio_and_extract_fea(file1, file2, dis_dir, fea_dir,verbose=True):
   name2 = file2.split('/')[-1][:-4]
   if verbose:
     print(name1, "mix", name2)
-  outfile = dis_dir+'/'+name1+'MIX'+name2+".wav"
-  outwave = wave.open(outfile, 'wb')
-  nchannels = 1
-  sampwidth = 2  # 采样位宽，2表示16位
-  framerate = 16000
-  nframes = len(mixedData)
-  comptype = "NONE"
-  compname = "not compressed"
-  outwave.setparams((nchannels, sampwidth, framerate, nframes,
-                     comptype, compname))
-  outwave.writeframes(mixedData)
+  # outfile = dis_dir+'/'+name1+'MIX'+name2+".wav"
+  # outwave = wave.open(outfile, 'wb')
+  # nchannels = 1
+  # sampwidth = 2  # 采样位宽，2表示16位
+  # framerate = 16000
+  # nframes = len(mixedData)
+  # comptype = "NONE"
+  # compname = "not compressed"
+  # outwave.setparams((nchannels, sampwidth, framerate, nframes,
+  #                    comptype, compname))
+  # outwave.writeframes(mixedData)
 
   # 提取特征
   NFFT = 512
   overlap = 256
-  _,_,mix_mag_spec = _manual_magnitude_spectrum_sci_stft(mixedData, NFFT, overlap)
-  _,_,clean1_mag_spec = _manual_magnitude_spectrum_sci_stft(waveData1,NFFT,overlap)
-  _,_,clean2_mag_spec = _manual_magnitude_spectrum_sci_stft(waveData2,NFFT,overlap)
+  _, _, mix_mag_spec = _manual_magnitude_spectrum_sci_stft(
+      mixedData, NFFT, overlap)
+  _, _, clean1_mag_spec = _manual_magnitude_spectrum_sci_stft(
+      waveData1, NFFT, overlap)
+  _, _, clean2_mag_spec = _manual_magnitude_spectrum_sci_stft(
+      waveData2, NFFT, overlap)
   mix_log_pow_spec = np.log10((1.0 / NFFT) * (mix_mag_spec ** 2))
   clean1_log_pow_spec = np.log10((1.0 / NFFT) * (clean1_mag_spec ** 2))
   clean2_log_pow_spec = np.log10((1.0 / NFFT) * (clean2_mag_spec ** 2))
-  feature={
-    "x":mix_log_pow_spec,
-    "y":[clean1_log_pow_spec,clean2_log_pow_spec],
+  ########
+  mix_log_pow_spec +=np.abs(np.min(mix_log_pow_spec))
+  clean1_log_pow_spec +=np.abs(np.min(clean1_log_pow_spec))
+  clean2_log_pow_spec +=np.abs(np.min(clean2_log_pow_spec))
+  mix_log_pow_spec /= np.max(mix_log_pow_spec) # fix normalization
+  clean1_log_pow_spec /= np.max(clean1_log_pow_spec)
+  clean2_log_pow_spec /= np.max(clean2_log_pow_spec)
+  feature_dict = {
+      "x": mix_log_pow_spec,
+      "y": [clean1_log_pow_spec, clean2_log_pow_spec],
   }
-  scipy.io.savemat(fea_dir+'/'+name1+"MIX"+name2+".mat",feature)
-
+  # scipy.io.savemat(fea_dir+'/'+name1+"MIX"+name2+".mat",feature_dict)
 
   f1.close()
   f2.close()
-  outwave.close()
+  # outwave.close()
+  return feature_dict
+
+
+# 时间维度上补0，将时间维度上的重叠展开，然后将特征矩阵降维为向量; unfold_width,展开的宽度，即网络输入的维度，必须是奇数
+def _feature_pad_unfold_flatten(feature, unfold_width):
+  feature = np.array(feature)  # [none,257]
+  feature = np.concatenate([np.zeros([unfold_width//2, np.shape(feature)[1]]),
+                            feature,
+                            np.zeros([unfold_width//2, np.shape(feature)[1]])
+                            ],
+                           axis=0)
+  unfolded_feature = []  # [none+,257]
+  for i in range(len(feature)-unfold_width+1):
+    unfolded_feature.extend(feature[i:i+unfold_width])
+  unfolded_feature = np.reshape(
+      unfolded_feature, [-1, unfold_width*np.shape(feature)[1]])
+  return unfolded_feature
+
+
+def prepare_x_y_for_dnn(utt1file, utt2file, unfold_width):  # 归一化的log_power_spectrum
+  feature_dict = _mix_audio_and_extract_feature(
+      utt1file, utt2file, verbose=False)
+  x_unfolded = _feature_pad_unfold_flatten(
+      feature_dict["x"], unfold_width)  # [none,257]
+  y1 = feature_dict["y"][0]  # [none-,257]
+  y2 = feature_dict["y"][1]  # [none-,257]
+  y = np.concatenate(
+      [y1, y2], axis=1)  # [none,257*7]
+  return x_unfolded, y
+
+
+def prepare_x_for_rbm(utt1file, utt2file, unfold_width):
+  feature_dict = _mix_audio_and_extract_feature(utt1file, utt2file,verbose=False)
+  x_unfolded = _feature_pad_unfold_flatten(
+      feature_dict["x"], unfold_width)  # [none,257]
+  return x_unfolded
