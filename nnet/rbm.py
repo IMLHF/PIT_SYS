@@ -93,8 +93,9 @@ class RBM(object):
 
   def rbm_train(self, data_x, batch_size=128, n_epoches=1, verbose=True):
 
-    n_data = np.shape(data_x)[0]
-    n_batches = (n_data // batch_size)+1
+    x_len = np.shape(data_x)[0]
+    n_batches = x_len//batch_size if (x_len % batch_size == 0) else ((
+          x_len//batch_size)+1)
 
     # # whether or not plot
     # if self.plot is True:
