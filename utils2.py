@@ -1,8 +1,6 @@
 import wave
 import numpy as np
 import scipy.io
-import librosa.feature
-import scipy.signal.windows
 
 
 def _manual_magnitude_spectrum_sci_stft(signal, NFFT=512, overlap=256):
@@ -37,18 +35,7 @@ def _manual_magnitude_spectrum_np_fft(signal, NFFT=512, overlap=256):
                                        axis=1,
                                        ))
   # pow_frames = (1.0 / NFFT) * ((mag_frames) ** 2)
-  # print(np.shape(mag_frames))
   return mag_frames
-
-
-def _librosa_stft(signal, NFFT=512, overlap=256):
-  tmp = librosa.core.stft(y=signal.astype(np.float),
-                          n_fft=NFFT,
-                          hop_length=NFFT-overlap,
-                          window=scipy.signal.windows.hann )
-  # print(np.shape(tmp.T))
-  return tmp.T
-
 
 def __extract_norm_log_mag_spec(mag_spec):
   LOG_NORM_MAX = 5
@@ -61,7 +48,6 @@ def __extract_norm_log_mag_spec(mag_spec):
   log_mag_spec += np.abs(LOG_NORM_MIN)
   log_mag_spec /= LOG_NORM_MAX
   return log_mag_spec
-
 
 def _mix_audio_and_extract_feature(file1, file2, verbose=True):
   # 混合语音
@@ -102,16 +88,15 @@ def _mix_audio_and_extract_feature(file1, file2, verbose=True):
   NFFT = 512
   overlap = 256
 
-  clean1_mag_spec = _librosa_stft(
+  clean1_mag_spec = _manual_magnitude_spectrum_sci_stft(
       waveData1, NFFT, overlap)
-  clean2_mag_spec = _librosa_stft(
+  clean2_mag_spec = _manual_magnitude_spectrum_sci_stft(
       waveData2, NFFT, overlap)
-  mix_mag_spec = _librosa_stft(
+  mix_mag_spec = _manual_magnitude_spectrum_sci_stft(
       mixedData, NFFT, overlap)
-  clean1_mag_spec = __extract_norm_log_mag_spec(
-      clean1_mag_spec)  # fix normalization
-  clean2_mag_spec = __extract_norm_log_mag_spec(clean2_mag_spec)
-  mix_mag_spec = __extract_norm_log_mag_spec(mix_mag_spec)
+  clean1_mag_spec =__extract_norm_log_mag_spec(clean1_mag_spec)  # fix normalization
+  clean2_mag_spec =__extract_norm_log_mag_spec(clean2_mag_spec)
+  mix_mag_spec =__extract_norm_log_mag_spec(mix_mag_spec)
   feature_dict = {
       "x": mix_mag_spec,
       "y": [clean1_mag_spec, clean2_mag_spec],

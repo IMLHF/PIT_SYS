@@ -120,7 +120,9 @@ class MLP1(object):
     session_t = self.session
     for epoch in range(n_epoches):
       avg_lost = 0.0
-      total_batch = (len(X)//batch_size)+1
+      x_len=len(X)
+      total_batch = x_len//batch_size if (x_len % batch_size == 0) else ((
+          x_len//batch_size)+1)
       for i in range(total_batch):
         s_site = i*batch_size
         if(s_site+batch_size <= len(X)):

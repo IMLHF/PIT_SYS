@@ -7,6 +7,7 @@ from PIL import Image
 import time
 import matplotlib
 import matplotlib.pyplot as plt
+import utils
 
 
 class Test(object):
@@ -114,18 +115,6 @@ class Test(object):
     return t, f, spec.T
 
   def manual_magnitude_spectrum_sci_stft_test(self, signal, NFFT=512, overlap=256):
-    segsize = NFFT  # 每帧长度
-    inc = segsize-overlap
-    signal_length = len(signal)
-    nframes = 1 + int(np.ceil(float(np.abs(signal_length - segsize)) / inc))
-    pad_length = int((nframes-1)*inc+segsize)  # 补0后的长度
-    zeros = np.zeros((pad_length-signal_length,))  # 不够的长度使用0填补，类似于FFT中的扩充数组操作
-    pad_signal = np.concatenate((signal, zeros))  # 填补后的信号记为pad_signal
-    indices = np.tile(np.arange(0, segsize), (nframes, 1))+np.tile(
-        np.arange(0, nframes*inc, inc), (segsize, 1)).T  # 相当于对所有帧的时间点进行抽取，得到nf*nw长度的矩阵
-    indices = np.array(indices, dtype=np.int32)  # 展开overlap的帧矩阵
-    frames = pad_signal[indices]  # 得到展开后帧信号矩阵
-    frames *= np.hamming(segsize)  # 汉明窗
     f, t, mag_frames = np.absolute(scipy.signal.stft(signal,
                                                      fs=16000,  # signal的采样率
                                                      window="hamming",
@@ -146,13 +135,18 @@ class Test(object):
                                  )
     # plt.cla() # 清除axes，即当前 figure 中的活动的axes，但其他axes保持不变。
     # plt.clf() # 清除当前 figure 的所有axes，但是不关闭这个 window，所以能继续复用于其他的 plot。
-    plt.close() # 关闭 window，如果没有指定，则指当前 window。
+    plt.close()  # 关闭 window，如果没有指定，则指当前 window。
     return t, f, spec.T
 
   def show_spectrum(self, mat, name, t, f):
     print(np.max(mat))
     print(np.shape(mat))
-    # mat = np.log10(mat)
+
+    # 取log并归一化（离散化）
+    log_mat = np.log10(mat)
+    upmoved_log_mat = log_mat+np.abs(np.min(log_mat))
+    normalized_log_mat = upmoved_log_mat/np.max(upmoved_log_mat)
+    mat = normalized_log_mat
 
     img = Image.fromarray(255-np.array(255.0/np.max(mat)*mat, dtype=np.int16))
     img = img.convert('L')
@@ -161,38 +155,34 @@ class Test(object):
     # plt.imshow(mat)
     # plt.tight_layout()
     # plt.show()
+    # plt.close()
     plt.pcolormesh(f, t, np.log10(mat),)
     plt.title('STFT Magnitude')
     plt.xlabel('Frequency [Hz]')
     plt.ylabel('Time [sec]')
-    plt.savefig("test/fig_"+name+'.jpg')
-    # plt.show()
+    # plt.savefig("test/fig_"+name+'.jpg')
+    plt.show()
     plt.close()
 
   def spectrum_test(self):
-    f = wave.open("utterance_test/BAC009S0908W0121.wav", 'rb')
+
+    f = wave.open('utterance_test/BAC009S0174W0134.wav', 'rb')
+    # f = wave.open("utterance_test/BAC009S0908W0121.wav", 'rb')
     params = f.getparams()
     nchannels, sampwidth, framerate, nframes = params[:4]
     strData = f.readframes(nframes)
     waveData = np.fromstring(strData, dtype=np.int16)
+    spec = self.manual_magnitude_spectrum_np_fft_test(waveData, 512, 256)
     self.show_spectrum(
-        self.manual_magnitude_spectrum_np_fft_test(waveData, 512, 256),
+        spec,
         "manual_magnitude_spectrum_np_fft",
-        np.arange(0, 483),
-        np.arange(0, 257)
+        np.arange(0, np.shape(spec)[0]),
+        np.arange(0, np.shape(spec)[1])
     )
     t, f, spec = self.sci_spectrogram_test(waveData, 512, 256)
     self.show_spectrum(
         spec,
         "sci_spectrogram_test",
-        t,
-        f,
-    )
-    t, f, spec = self.manual_magnitude_spectrum_sci_stft_test(
-        waveData, 512, 256)
-    self.show_spectrum(
-        spec,
-        "manual_magnitude_spectrum_sci_stft",
         t,
         f,
     )
@@ -204,6 +194,25 @@ class Test(object):
         t,
         f,
     )
+    t, f, spec = self.manual_magnitude_spectrum_sci_stft_test(
+        waveData, 512, 256)
+    self.show_spectrum(
+        spec,
+        "manual_magnitude_spectrum_sci_stft",
+        t,
+        f,
+    )
+
+  def debug(self):
+    file1 = 'utterance_test/BAC009S0002W0123.wav'
+    file2 = 'utterance_test/BAC009S0174W0134.wav'
+    file3 = 'utterance_test/BAC009S0174W0133.wav'
+    x = utils.prepare_x_for_rbm(file1, file3, 7)
+    x = utils.prepare_x_for_rbm(file1, file2, 7)
+
+
+  def __set__(self):
+    print("233")
 
 
 if __name__ == "__main__":
@@ -212,4 +221,9 @@ if __name__ == "__main__":
   # test.load_mat_test()
   # test.wav_write_test()
   # test.normalization_mix_audio_test()
-  test.spectrum_test()
+  # test.spectrum_test()
+  print(421*0.00243)
+  print(0.421*2.43)
+  # test.debug()
+  test.a = 2
+  print(test.a)

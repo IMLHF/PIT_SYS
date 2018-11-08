@@ -6,12 +6,15 @@ import datetime
 import param
 import shutil
 import scipy.io
-from nnet.print_ import print_
+from nnet.print_ import print_,print_f
 
 
 def run():
   param.val = 2
   clean_wav_speaker_set_dir = param.RAWDATA_DIR
+  log_dir = "log"
+  if os.path.exists(log_dir):
+    shutil.rmtree(log_dir)
   data_dir = "data"
   if os.path.exists(data_dir):
     shutil.rmtree(data_dir)
@@ -52,10 +55,11 @@ def run():
   print_('test_cc clean: '+str(len(clean_wav_list_test_cc)))
   print_('train mixed: '+str(len(clean_wav_list_train)*len(clean_wav_list_train)))
   print_('validation mixed: '+str(len(clean_wav_list_validation)
-                                 * len(clean_wav_list_validation)))
-  print_('test_cc mixed: '+str(len(clean_wav_list_test_cc)*len(clean_wav_list_test_cc)))
+                                  * len(clean_wav_list_validation)))
+  print_('test_cc mixed: '+str(len(clean_wav_list_test_cc)
+                               * len(clean_wav_list_test_cc)))
   print_('All about: '+str(len(clean_wav_list_train)*len(clean_wav_list_train)+len(clean_wav_list_validation)
-                          * len(clean_wav_list_validation)+len(clean_wav_list_test_cc)*len(clean_wav_list_test_cc)))
+                           * len(clean_wav_list_validation)+len(clean_wav_list_test_cc)*len(clean_wav_list_test_cc)))
 
   data_class_dir = ['train', 'validation', 'test_cc']
   for (clean_wav_list, j) in zip((clean_wav_list_train, clean_wav_list_validation, clean_wav_list_test_cc), range(3)):

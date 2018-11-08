@@ -1,4 +1,6 @@
 from .rbm import RBM
+import os
+import time
 
 class DBN(object):
   def __init__(self, sizes,learning_rate=0.01,cd_k=1):

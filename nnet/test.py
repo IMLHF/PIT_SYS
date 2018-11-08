@@ -1,7 +1,7 @@
 import tensorflow as tf
 import numpy as np
 from rbm import RBM
-from rbm_0 import RBM as RBM_0
+from .rbm_abandon import RBM as RBM_0
 from dbn import DBN
 from nn import NN
 from tensorflow.examples.tutorials.mnist import input_data

@@ -3,8 +3,8 @@ import sys
 
 class _const(object):
   def __init__(self):
-    # self.RAWDATA_DIR = '/mnt/d/tf_recipe/PIT_SYS/utterance_test/speaker_set'
-    self.RAWDATA_DIR = '/home/student/work/pit_test/data_small'
+    self.RAWDATA_DIR = '/mnt/d/tf_recipe/PIT_SYS/utterance_test/speaker_set'
+    # self.RAWDATA_DIR = '/home/student/work/pit_test/data_small'
 
   class ConstError(PermissionError):
     pass

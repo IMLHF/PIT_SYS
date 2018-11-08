@@ -4,16 +4,11 @@ from nnet.dbn import DBN
 import scipy.io
 import utils
 import numpy as np
-from nnet.print_ import print_
+from nnet.print_ import print_,print_f
 import os
-os.environ['CUDA_VISIBLE_DEVICES']='-1'
+os.environ['CUDA_VISIBLE_DEVICES']='1'
 
 if __name__ == "__main__":
-  # arr=np.arange(12)
-  # a=np.reshape(arr,[6,2])
-  # print(a)
-  # b=np.reshape(a,[-1,4])
-  # print(b)
   data_prepare.run()
 
   _dbn = DBN([257*7, 2048, 2048, 2048, 257*2])
@@ -27,6 +22,9 @@ if __name__ == "__main__":
       utt1 = mixed_wavs[0]
       utt2 = mixed_wavs[1]
       x = utils.prepare_x_for_rbm(utt1, utt2, 7)
+      # print(x)
+      # exit(0)
+      # region
       # print(np.max(x),np.min(x))
       # x_,y_=utils.prepare_x_y_for_dnn(utt1,utt2,7)
       # print(np.max(x_),np.min(x_),np.max(y_),np.min(y_))
@@ -36,13 +34,17 @@ if __name__ == "__main__":
       # print(np.shape(x))
       # print(x.dtype)
       # print(type(x[0][0]))
-      layer_err = _dbn.pretrain(x, batch_size=64, n_epoches=10, verbose=True)
+      # endregion
+      # os.system("nvidia-smi")
+      # time.sleep(5)
+      layer_err = _dbn.pretrain(x, batch_size=2048, n_epoches=10, verbose=True)
       err_along_utt.append(layer_err)
-      print_("RBM layer err : "+str(layer_err))
+      print_f(mixed_wavs,"log/RBM_layer_err.log")
+      print_f("RBM layer err : "+str(layer_err),"log/RBM_layer_err.log")
     err_along_epoch.append(err_along_utt)
 
   _nn = MLP1([257*7, 2048, 2048, 2048, 257*2],
-             learning_rate=0.01, batch_size=64, n_epoches=1)
+             learning_rate=0.01, batch_size=2048, n_epoches=1)
   _nn.load_from_dbn_to_normalNN(_dbn)
   n_epoches_train = 20
   err_list_train = []
@@ -58,6 +60,7 @@ if __name__ == "__main__":
       err = _nn.train(x_, y_, verbose=False)
       err_epoch += (err/len(mixed_wav_list))
     err_epoch /= n_epoches_train
+    err_list_train.append(err_epoch)
     print("Epoch %04d err:" % i, err_epoch)
     # TODO validation
 

@@ -1,5 +1,7 @@
 /utterance_test
 /data
-/__pycache__
-/data_prepare/__pycache__
-/nnet/__pycache__
+/noise92
+/test
+/test_norm_log_mag_sepc
+/log
+*__pycache__*
